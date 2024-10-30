@@ -8,4 +8,4 @@ The code for the these programming languages is available in separate folders. I
 
 ===== OTHER FILES ====
 
- - HabermanDataSet.sqlite contains the data set for the empirical analysis.
+ The file haberman.txt contains the data set for the empirical analysis.
