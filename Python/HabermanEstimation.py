@@ -1,16 +1,10 @@
 import csv
 import numpy as np
 import os
+import pandas as pd
 import re
-import tensorflow as tf
 from scipy.stats import norm
-from sklearn.linear_model import LogisticRegression
-
-# Load function library
-CurrentDirectory = os.path.dirname(__file__)
-ParentDirectory = re.findall('\S+/Python', CurrentDirectory)[0]
-LibraryScriptLocation = os.path.join(ParentDirectory, 'functions', 'LogisticRegressionFunctions.py')
-exec(open(LibraryScriptLocation).read())
+from functions.LogisticRegressionFunctions import EstimateLogisticRegressionNewtonRhapsonNumPy, EstimateLogisticRegressionScikitLearn
 
 # Specific function to print Haberman estimation to screen
 def PrintResults2Screen(beta, theta, AsymptoticCovarianceMatrix, SampleSize, PrintHeader):
@@ -26,39 +20,34 @@ def PrintResults2Screen(beta, theta, AsymptoticCovarianceMatrix, SampleSize, Pri
     for iter in range(len(gamma)):
         print('%-15s %-15.4e %-15.4e %-15.4f' % (names[iter], gamma[iter], StdError[iter], Pvalues[iter]))
 
-# Read data
-rawdata= []
-CurrentDirectory = os.path.dirname(__file__)
-ParentDirectory = re.findall('\S+/LogisticRegression', CurrentDirectory)[0]
-DataLocation = os.path.join(ParentDirectory, 'HabermanDataset', 'haberman.txt')
-with open(DataLocation, 'r') as file:
-    reader = csv.reader(file, quoting=csv.QUOTE_NONNUMERIC, delimiter = ',')
-    for row in reader:
-        rawdata.append(row[:])
-data = np.array(rawdata)
+# Read input data
+input_data = pd.read_csv("./HabermanDataset/haberman.txt", header=None, names=["Age", "Year", "AxilNodes", "y"])
+input_data["y"] = -input_data["y"]+2
 
-# Process variables
-Age = data[:, 0]
-Year = data[:, 1]
-AxilNodes = data[:, 2]
-y = data[:, 3]
-y = -y+2
-Z1 = Age-52
-Z2 = Year-63
+# Calculate standardized columns
+input_data["z1"] = input_data["Age"]-52
+input_data["z1^2"] = input_data["z1"]**2
+input_data["z1^3"] = input_data["z1"]**3
+input_data["z2"] = input_data["Year"]-63
+input_data["z1_z2"] = input_data["z1"]*input_data["z2"]
+input_data["log(1+AxilNodes)"] = np.log(1+input_data["AxilNodes"])
 
-# Regressor matrix (with shape (306,6) )
-X = np.stack((Z1, Z1**2, Z1**3, Z2, Z1*Z2, np.log(1+AxilNodes)), axis=1)
+# Create X and y
+X = input_data[["z1", "z1^2", "z1^3", "z2", "z1_z2", "log(1+AxilNodes)"]]
+y = input_data["y"]
+n = len(y)
 
 # Remove observation 8 (see Landwehr, Pregibon and Shoemaker (1984), page 86)
-X_del = np.delete(X, obj=7, axis=0)
-y_del = np.delete(y, obj=7, axis=0)
-n = len(y_del)
+X = X.drop(7)
+y = y.drop(7)
 
 # Estimation using NEWTON-RHAPSON in Numpy
 bStart = 1.5; thetaStart = np.array([[0.03], [0.004], [-0.0003], [0], [0], [-0.5]]);
-bhat1, thetahat1, _, AsymptoticCov1 = EstimateLogisticRegressionNewtonRhapsonNumPy(X_del.T, y_del.T, bStart, thetaStart)
+bhat1, thetahat1, _, AsymptoticCov1 = EstimateLogisticRegressionNewtonRhapsonNumPy(np.array(X).T, np.array(y).T, bStart, thetaStart)
 PrintResults2Screen(bhat1, thetahat1.reshape(1,len(thetahat1))[0], AsymptoticCov1, n, 'NEWTON-RHAPSON in Numpy:')
 
 # Estimation using SCIKIT-LEARN
-bhat2, thetahat2, AsymptoticCov2 = EstimateLogisticRegressionScikitLearn(X_del, y_del)
+bhat2, thetahat2, AsymptoticCov2 = EstimateLogisticRegressionScikitLearn(np.array(X), np.array(y))
 PrintResults2Screen(bhat2, thetahat2, AsymptoticCov2, n, 'SCIKIT-LEARN:')
+
+

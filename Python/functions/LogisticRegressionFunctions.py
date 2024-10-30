@@ -1,3 +1,7 @@
+import numpy as np
+from sklearn.linear_model import LogisticRegression
+import tensorflow as tf
+
 ################################### FUNCTION: GenerateLogisticData ###################################
 def GenerateLogisticData(b, theta, n, rho=0.3):
     """
@@ -277,7 +281,7 @@ def EstimateLogisticRegressionScikitLearn(X, y, ComputeAsymptCov=True):
     TOL = 1E-6
 
     # Estimate logistic regression (include: from sklearn.linear_model import LogisticRegression)
-    clf = LogisticRegression(random_state=0, penalty='none', max_iter=MAXITER, tol = TOL, solver = 'lbfgs').fit(X, y)
+    clf = LogisticRegression(random_state=0, penalty=None, max_iter=MAXITER, tol = TOL, solver = 'lbfgs').fit(X, y)
 
     # Select parameters
     bhat = clf.intercept_
