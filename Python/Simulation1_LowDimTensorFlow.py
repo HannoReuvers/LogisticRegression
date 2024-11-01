@@ -6,12 +6,7 @@ import tensorflow as tf
 import os
 import re
 import time
-
-# Load function library
-CurrentDirectory = os.path.dirname(__file__)
-ParentDirectory = re.findall('\S+/Python', CurrentDirectory)[0]
-LibraryScriptLocation = os.path.join(ParentDirectory, 'functions', 'LogisticRegressionFunctions.py')
-exec(open(LibraryScriptLocation).read())
+from functions.HelperFunctions import GenerateLogisticDataTensorFlow, EstimateLogisticRegressionNewtonRhapsonTensorFlow
 
 # Parameters
 method = 'NewtonRhapsonTensorFlow'
