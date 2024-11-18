@@ -324,3 +324,84 @@ def EstimateLogisticRegressionScikitLearn(X, y, ComputeAsymptCov=True):
 
     # Return output
     return bhat, thetahat, AsymptCov
+
+
+def soft_thresholding(x, threshold):
+    if np.abs(x)<threshold:
+        return 0
+    else:
+        return np.sign(x)*(np.abs(x)-threshold)
+
+
+def LinearRegressionLasso(X, y, lambdaParameter, bStart, thetaStart, DisplayIterationDetails=False):
+    """
+    Estimate a linear regression model with an L1 penalty on the coefficients (intercept is not penalized).
+    """
+
+    print(DisplayIterationDetails)
+
+    # Dimensions
+    p, n = X.shape
+
+    # Algorithm parameters
+    MAXITER = 5000
+    RELTOL = 1E-6
+
+    # Calculate average of squared regressor value outside of main loop
+    avg_squares_X = np.mean(X**2, axis=1, keepdims=True)
+
+    #--- COORDINATE-DESCENT ---#
+    bOLD = bStart
+    thetaOLD = thetaStart
+    thetaNEW = np.copy(thetaOLD)
+    ConvergenceAchieved = False
+    if DisplayIterationDetails:
+        print('\n%-7s %-15s %-15s %-15s' % ("iter", "obj. func.", "rel. delta b", "rel. delta theta"))
+        print('------------------------------------------------------------------')
+    # Iterations
+    for iter in range(MAXITER):
+
+        # Update intercept estimate
+        bNEW = np.mean(y - thetaOLD.T@X)
+    
+        # Coordinate descent for feature parameters
+        for k in range(p):
+
+            # Compute r_{-k}
+            thetaTEMP = np.copy(thetaNEW)
+            thetaTEMP[k] = 0
+            r_min_k = y - bNEW - thetaTEMP@X
+
+            # Apply coordinate descent formula to element k of theta
+            thetaNEW[k] = (soft_thresholding(r_min_k@X[k,:]/n, lambdaParameter)/avg_squares_X[k])[0]
+
+        # Relative parameter change (the case thetaNEW=thetaOLD=np.zeros should be treated explicitly)
+        bRelChange = np.absolute(bNEW-bOLD)/np.absolute(bOLD)
+        if (np.linalg.norm(thetaOLD)<1E-10) and (np.linalg.norm(thetaNEW-thetaOLD)<1E-10):
+            thetaRelChange = 0
+        else:
+            thetaRelChange = np.linalg.norm(thetaNEW-thetaOLD)/np.linalg.norm(thetaOLD)
+
+
+        # Report convergence metrics (OPTIONAl)
+        if DisplayIterationDetails:
+            squaredErrors = (y - bNEW- thetaNEW.T@X)@(y - bNEW- thetaNEW.T@X).T/(2*n)
+            parL1Norm = sum(abs(thetaNEW))
+            #print(squaredErrors)
+            #print(parL1Norm)
+            #print(thetaNEW)
+            print("%-7d %-15.4f %-15.4g %-15.4g" % (iter, squaredErrors+lambdaParameter*parL1Norm, bRelChange, thetaRelChange))
+
+        # Check convergence
+        if (bRelChange<RELTOL) and (thetaRelChange<RELTOL):
+            ConvergenceAchieved = True
+            bhat = bNEW
+            thetahat = thetaNEW
+            break
+
+        # Update parameters for next iteration
+        bOLD = np.copy(bNEW)
+        thetaOLD = np.copy(thetaNEW)
+
+    return bhat, thetahat, ConvergenceAchieved
+
